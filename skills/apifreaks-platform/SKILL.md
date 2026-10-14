@@ -1,343 +1,162 @@
 ---
 name: apifreaks-platform
 description: >
-  Use this skill for any task calling the APIFreaks API platform, and whenever a
-  task needs data an agent cannot get on its own: WHOIS and domain records,
-  domain availability, subdomains, reputation, typosquatting, DNS, SSL
-  certificates, IP geolocation and threat or VPN and proxy detection, email and
-  phone validation, geocoding, ZIP and postal codes, VAT, IBAN and SWIFT
-  validation, country and city data, user agent parsing, website screenshots, web
-  scraping, or PDF processing. Also use it for enrichment at volume, including
-  lists of domains, IPs or emails, screening signups, and parsing or enriching
-  server logs, even when the data involved is weather, astronomy, timezone,
-  currency or commodity. Use it even when the user does not mention APIFreaks by
-  name. Do not use it for a single fact that is answerable without an API.
-compatibility: Needs an APIFreaks API key, read from APIFREAKS_API_KEY by default,
-  and network access to fetch per-endpoint reference.md files from apifreaks.com.
+  Use this skill whenever a task involves APIFreaks, or needs live data an agent
+  cannot produce from memory, such as lookups on domains, IPs, emails, phone
+  numbers, certificates, financial identifiers, locations, or web pages, and for
+  any APIFreaks job that takes more than one call. It complements the APIFreaks
+  MCP server: the tools make the calls, and this skill covers what the tools
+  cannot, including setup, credit cost, working at volume, reading results
+  correctly, and recovering from failures. Use it even when the user does not mention APIFreaks
+  by name.
+license: MIT
+compatibility: >
+  Works best with the APIFreaks MCP server connected. Needs an APIFreaks API key.
 metadata:
-  version: "1.0.0"
+  version: "2.0.0"
   homepage: "https://apifreaks.com"
 ---
 
 # APIFreaks platform
 
-APIFreaks is a first-party REST API platform: it builds and operates the APIs it
-sells rather than reselling third-party ones. One account, one API key, and one
-shared credit balance cover the whole catalog.
+APIFreaks is a first-party API platform: one account, one API key, and one
+shared credit balance across the whole catalog.
 
-The catalog is stable from week to week but not over months: APIs get added,
-occasionally deprecated, and promoted to new versions. This file therefore holds
-rules rather than catalog data. Resolve paths, versions, parameters, caps, and
-costs at call time from the sources below, and never answer from memory of a
-previous task.
+The APIFreaks MCP server is how an agent works with it. Its tools describe their
+own inputs and outputs, so this skill does not repeat them. It covers what sits
+above any single tool call: getting set up, knowing what a job will cost, working
+at volume, reading results correctly, and handling failure.
 
-## Pick the access path
+## Before anything else: is MCP connected?
 
-**If APIFreaks MCP tools are present, use them.** They handle auth, endpoint
-selection, and versioning, so they are both faster and harder to get wrong. See
-[references/mcp-server.md](references/mcp-server.md).
+If APIFreaks tools are available, go straight to the work.
 
-**Otherwise use direct REST**, following this file. The MCP server covers the
-whole catalog, so a missing tool means its module is not enabled rather than a
-capability we lack: do the work over REST, and mention once that the module can
-be added to `ENABLE_MODULES`. Never block a task on a config change, and do not
-raise it twice in a session.
+If they are not, help the user connect the server before starting, since it is
+the reliable way to use the platform. Setup instructions for every supported
+client are maintained at https://apifreaks.com/integrations/mcp-server. Point the
+user there rather than reciting configuration, because client config formats
+change.
 
-Do not switch between the two mid-operation for the same data, since cost and
-error handling differ.
+Two things catch almost everyone during setup:
 
-If the user has no API key and wants a single manual answer, the free browser
-tools at https://apifreaks.com/tools are worth pointing them to. They spend no
-credits.
+- **The server needs `ENABLE_MODULES` as well as the key.** Without it the only
+  tool that appears is `list_modules`, and the server looks connected but does
+  nothing. Call `list_modules` to see what exists and help the user pick.
+- **It needs Node.js v24 or newer.** An older version stops it starting at all.
 
-## Authentication
+If the user cannot connect MCP at all, point them to https://apifreaks.com/docs
+for direct HTTP access.
 
-Look for the key in this order:
+### When a tool is missing
 
-1. The `APIFREAKS_API_KEY` environment variable. This is the default and matches
-   what the MCP server uses.
-2. A key in a project config or `.env` file the user points at.
-3. A key the user supplies directly in the conversation.
+The MCP server covers the whole catalog, so a missing tool means its module is
+not enabled, never that APIFreaks cannot do the thing. Do not tell a user a
+capability is unavailable because a tool is absent.
 
-If none exists, ask for one. Calling unauthenticated returns 400 every time.
+Tell the user which module covers the task and that adding it to
+`ENABLE_MODULES` and restarting the client makes the tool available. Call
+`list_modules` if you need to confirm the name. Say it once and do not repeat it
+in the same session.
 
-### Helping a user set one up
+## The API key
 
-Keys are created and reset in the dashboard at https://apifreaks.com. New
-accounts get 10,000 free credits without a card, so a user without a key can
-have one in a couple of minutes.
+The MCP server reads the key from `APIFREAKS_API_KEY`. Keys are created and
+reset in the dashboard at
+https://apifreaks.com, and new accounts include 10,000 free credits without a
+card.
 
-Where it goes depends on the environment, and the right advice differs:
-
-- **An agent with a shell** (Claude Code, Codex, Cursor): export it, in the shell
-  profile for permanent use or a gitignored `.env` for one project. The key never
-  enters the conversation, which is the safest arrangement.
-- **An MCP client**: it goes in the `env` block of the client config. The MCP
-  process reads it and the assistant never handles it at all.
-- **Chat with no shell**: the only route is the user pasting it in. That puts the
-  key in conversation history, so say so once, use it for that session only, and
-  suggest the environment variable as the durable fix.
-
-### Handling a key the user pasted
-
-- Use it for this session. Do not write it to a file to make it persist.
-- Never echo it back, not in a summary, a confirmation, or an error message.
-- Never put it in the `apiKey` query parameter, where it lands in shell history
-  and proxy logs. Use the header.
-- If the user pastes a key into a shared or logged context, mention that it can
-  be reset in the dashboard.
-
-```bash
-curl -s "https://api.apifreaks.com/v2.0/domain/whois/live?domainName=example.com" \
-  -H "X-apiKey: $APIFREAKS_API_KEY"
-```
-
-Prefer the header over the `apiKey` query parameter so the key stays out of shell
-history, proxy logs, and pasted URLs. Never write a key to a file, a script, or
-an example, and never echo one back to the user.
+Where the key lives depends on the environment. In an MCP client it goes in the
+`env` block of the client's config, where the assistant never sees it. In a
+shell-based agent it can be exported or kept in a gitignored `.env`. In a chat
+with neither, the user may paste it: use it for that session only, never echo it
+back, never write it to a file to make it persist, and mention once that it is
+now in the conversation history and can be reset in the dashboard.
 
 Organization and personal accounts have separate keys and separate balances. If
 usage looks wrong, confirm which account's key is in use before assuming a
 billing fault.
 
-## Discovery
-
-Never recall an endpoint from memory. Resolve it every time:
-
-1. **Fetch `https://apifreaks.com/llms-full.txt`.** It lists categories, product
-   pages, every endpoint with its reference.md and playground links, and the credit
-   cost per endpoint. This is where cost comes from; it is not in the API
-   response until after the call.
-2. **Fetch the endpoint's `reference.md`.** That is the contract: version,
-   method, path, parameters, response schema, and endpoint-specific errors.
-3. **Build the request from that `reference.md`**, not from the `llms-full.txt`
-   entry. The catalog tells you which endpoint to call; only the `reference.md`
-   tells you how to call it.
-
-A product is not an endpoint. One product can cover several endpoints, so
-landing on the right product does not mean you have the right call. Check what a
-product contains before settling on one.
-
-For generating a client or validating requests programmatically, the full
-OpenAPI 3.1 specs ship as `@apifreaks/openapi-specs` on npm and at
-https://github.com/api-freaks/af-openapi-specs. For a single call, the
-`reference.md` is faster to read.
-
-`https://apifreaks.com/llms.txt` is the shorter product-level index, useful when
-routing by product rather than by endpoint.
-
-### Reading a reference.md
-
-A `reference.md` runs to roughly 13 KB. Skimming it costs failed calls. Read these
-four parts, in order:
-
-1. **`servers:` in the frontmatter.** The version for this endpoint. Nothing else
-   tells you reliably.
-2. **The Parameters table.** Which exist, their types, which are required. A
-   missing required parameter returns 400, and the example response will not warn
-   you, because examples show a call with everything supplied.
-3. **The response schema.** Exact field names and which are optional. Read it
-   before promising the user a field. Optional fields absent from a response are
-   normal, not an error.
-4. **The endpoint's own error table.** It overrides the platform table below. The
-   same status means different things across APIs: 403 is an unsupported TLD on
-   one and a permission problem on another.
-
-Watch for negative results returned with a 200. Domain WHOIS answers an
-unregistered domain with `domain_registered: no` and a 200, which is a
-successful, billed call and not a failure. Trust the schema's meaning over the
-status code alone.
-
-## Base URL and versioning
-
-```
-https://api.apifreaks.com/{version}/{endpoint-path}
-```
-
-The version is per-API and APIs get promoted between versions, so there is no
-platform default. Never carry a version from one endpoint to another and never
-assume `v1.0`. Take it from `servers:` in that endpoint's `reference.md`.
-
-A wrong version returns 404, which reads like missing data rather than the
-version mistake it is. On any 404, re-check version and path before telling the
-user the data does not exist.
-
-## Making a request
-
-The endpoint's `reference.md` states the method, the content type, the
-parameters, and the response formats. Take all four from it. None of them are
-consistent across the platform, so a default carried from another endpoint is a
-failed call.
-
-Where the `reference.md` offers a field filter, use it. A narrower response is easier
-to work with and sometimes cheaper than pulling the full payload.
-
-A complete worked example, request through output, is in
-[references/workflows.md](references/workflows.md).
-
 ## Credits
 
-One shared balance funds every call.
+Every call draws on one shared balance.
 
-- **Cost is published per endpoint** in `llms-full.txt` and on the product page's
-  pricing section. Read it there before running anything sizeable. Cost varies by
-  endpoint and by the options passed, so an option that adds data can raise it.
-- **`X-AF-Credits-Cost` on every response** reports what was actually deducted.
-  Use it to verify, not to estimate.
-- **Only 2xx responses are billed.** 4xx and 5xx are not charged, and anything
-  already charged is refunded.
-- **Check the balance** with `GET https://api.apifreaks.com/v1.0/credits/usage/info`.
-  A personal account key can call it normally. In an organization it is
-  restricted to the admin key, so a 403 there means insufficient role rather than
-  a bad key. There is no single "remaining" figure: it returns subscription,
-  surcharge, and one-off balances, each with an allowed and a used count, with
-  subscription fields null on accounts without one.
-- **Plan details** are machine-readable at https://apifreaks.com/pricing.md:
-  every tier with its credits, price, surcharge terms, and concurrency limit.
-  The calculator at /pricing/calculator is an interactive page for humans and
-  has nothing an agent can read; point a user there rather than fetching it.
+- **Know the cost before a sizeable run.** Credit cost per endpoint is published
+  in https://apifreaks.com/llms-full.txt and on each product page's pricing
+  section. Multiply by the number of items and tell the user the total before
+  starting.
+- **Batching does not reduce cost.** Credits are charged per item, so two single
+  lookups and one bulk request holding the same two items cost the same. Never
+  present batching as a saving.
+- **Options can change cost.** Enabling extra data on a request can raise what
+  that same endpoint costs.
+- **Only successful calls are billed.** A failed call deducts nothing, and
+  anything already charged for it is refunded. A failure costs time, not
+  credits.
 
-Before a large run, state the expected total to the user: published cost times
-the number of items. On bulk endpoints cost scales with items sent, not requests
-made. Never run an unbounded loop of paid calls.
+Plan details, including each tier's credits and limits, are machine-readable at
+https://apifreaks.com/pricing.md.
 
-## Errors
+## Working at volume
 
-Every error body carries a `message` describing the specific failure. Surface it
-as written rather than paraphrasing, and read it before acting on the status
-code.
+This is where agents waste the most credits, and where the platform gives the
+least warning.
 
-**The same status code means different things on different endpoints.** A 402 is
-about credits in some places and about a request limit in others. A 403 can be a
-permissions problem or an unsupported input. A 404 can be a wrong path or a
-genuine absence. Acting on the code alone produces confidently wrong answers, so
-the message decides, not the number.
+**Reduce before you call.** Deduplicate inputs, drop values that cannot be
+looked up (private or reserved IP ranges, malformed emails, empty cells), and
+call once per unique value. A large input often holds far fewer distinct values
+than rows.
 
-Two rules that hold everywhere:
+**Prefer bulk tools** where they exist. They mean fewer round trips and less
+pressure on limits, even though the credit cost is the same.
 
-- A 4xx or 5xx is not billed, and anything already charged is refunded. A failed
-  call costs time, not credits.
-- A 401 is never worth retrying.
+**Respect limits.** A handful of the heavier endpoints limit how many requests
+can run at once, and the lowest plans allow only one. Run calls one at a time by
+default. If a limit error comes back, slow down rather than retrying in
+parallel.
 
-The code table, per-endpoint meanings, and retry guidance are in
-[references/errors.md](references/errors.md). Each endpoint's `reference.md`
-lists the codes it can return, and overrides both.
+**Stop at what was asked.** Where results are paginated, fetch what the user
+needs rather than every page.
 
-## Concurrency
+**Keep the raw results** before transforming them, so a formatting mistake costs
+a re-read rather than paying for every lookup again.
 
-A handful of the heavier endpoints sit under a limit on **concurrent** requests
-rather than requests per minute. The endpoint's `reference.md` says whether it is
-one of them.
+## Reading results correctly
 
-Run sequentially unless a response tells you otherwise. Limited endpoints return
-`X-Concurrent-Threads` (the plan's ceiling) and `X-Concurrent-Threads-Active`.
-Read them from the first response and size the pool to the ceiling. Parallelising
-before that produces 429s, and the lowest plans allow only one request at a time.
+A successful call is not always a successful outcome. Read what came back
+before reporting it.
 
-A 429 is a pacing signal, not a failure, and is not billed.
+- **A negative answer arrives as a success.** An unregistered domain comes back
+  as a successful, billed call saying it is not registered. That answers the
+  question; it is not an error.
+- **Optional fields are often absent.** That is normal, not missing data.
+- **Some fields hold placeholder text** rather than real data, such as a
+  privacy service standing in for a domain's owner. Say so rather than
+  presenting it as the real value.
+- **Results can be partial.** Use what came back and say what did not.
 
-## Bulk requests
+When the user asked for a report, report findings rather than dumping rows. Keep
+the queried value alongside each result so it maps back to the input, and mark
+rows that returned nothing rather than dropping them: an absent record and a
+failed call look identical in a spreadsheet and mean different things.
 
-Prefer a bulk endpoint over a loop of single lookups: fewer round trips and no
-concurrency pressure.
+## When something fails
 
-Bulk does not cost less. Credits are charged per item, so two single lookups and
-one bulk request holding the same two items cost the same. Never tell a user that
-batching will save them credits.
+Failures carry a message describing the specific problem. Read it before acting,
+and surface it as written rather than guessing. The general handling is in
+[references/errors.md](references/errors.md).
 
-Bulk is not always a separate URL. On some APIs it is a POST to the same path as
-the single GET, on others it has its own path. Take both the method and the path
-from the `reference.md` rather than assuming either.
+## Long-running jobs
 
-Bulk endpoints cap how many items one request may carry. The `reference.md`
-gives the cap; chunk the input to it.
-
-When a bulk response reports per-record errors, keep the successes and report the
-failures separately. Never discard a batch over one bad row.
-
-Where results are paginated, stop at what the user asked for. Fetching every page
-by default can multiply the cost of a question that needed the first ten rows.
-
-## Asynchronous jobs
-
-PDF operations can return a `taskId` instead of a result. Polling
-a task wrongly is the most common way to waste time on this platform. The polling
-contract, webhook handling, and the resource upload and download flow are in
-[references/async.md](references/async.md). Read it before any PDF work.
-
-## Producing output
-
-Not every response is JSON. Screenshot and PDF endpoints return binary, so check
-the content type before parsing. Write binary straight to a file rather than
-holding or transforming it.
-
-On a run of any size, keep the raw responses before transforming them. A
-formatting mistake then costs a re-read instead of paying for every lookup again.
-Where there is no filesystem, keep the raw data rather than discarding it after
-the first transformation.
-
-For tabular output, keep the queried value as the first column so rows map back
-to the input, and mark rows that returned nothing rather than dropping them. An
-absent record and a failed call mean different things, and both look like an
-empty cell.
-
-## Gotchas
-
-Platform behaviours that defy reasonable assumptions. Each one produces a
-confidently wrong answer rather than an error, which is why they are here rather
-than in a reference file.
-
-- **A failed async job returns HTTP 200.** A PDF task reports failure in the body
-  as `status: failed`. Checking the status code alone reports success and
-  delivers nothing.
-- **A negative answer can arrive as a 200.** An unregistered domain comes back as
-  a successful, billed call with a field saying it is not registered. That
-  answers the question; it is not a failure.
-- **Version is per-API, not per-platform.** A wrong version returns 404, which
-  reads like missing data. Related-looking categories can sit on different
-  versions.
-- **A bulk endpoint may share its path with the single lookup**, differing only
-  by method, or it may have its own path. Neither is the rule.
-- **Credit cost is not in the response before the call.** It is published in
-  `llms-full.txt` and on the product page. `X-AF-Credits-Cost` reports what was
-  spent, not what will be.
-- **Bulk does not cost less.** Credits are charged per item, so batching changes
-  the number of requests, not the bill.
-- **The Credits Usage API is restricted inside an organization**, to the admin
-  key, though a personal account key calls it normally. It returns no single
-  "remaining" figure, only separate balances with allowed and used counts.
-- **402 is not always about credits.** On some endpoints it reports a request
-  limit the user fixes by asking for less. Read the message first.
-- **403 sometimes means the input is unsupported**, not that permission is
-  missing. A domain extension we do not cover returns 403, and no permission
-  change fixes it.
-- **423 on IP endpoints means the address is not publicly routable**, not that
-  the lookup failed.
-- **WHOIS contact fields often hold a privacy-service redirect**, not an address.
-  That is normal for privacy-protected domains, not missing data.
-- **Not every endpoint is GET or POST.** At least one uses DELETE. Take the
-  method from the `reference.md`.
-- **The MCP server needs `ENABLE_MODULES` as well as a key.** Without it only
-  `list_modules` appears and nothing else works.
+Some operations, currently PDF processing, do not return a result. They return a
+task identifier and run in the background, and a failed job still comes back as
+a successful call.
+Read [references/async.md](references/async.md) before any PDF work.
 
 ## Never
 
-- Hardcode an API key anywhere, including examples.
-- Guess a path, method, version, or parameter instead of reading the `reference.md`.
-- Quote a credit cost from memory instead of the published cost.
-- Retry a 401, 402, or 403. None are transient.
-- Run an unbounded loop of paid calls, or a large run without stating the cost.
-- Report a 404 as "no data exists" without confirming version and path.
-- Treat a 200 as success without checking the schema's meaning.
-
-## References
-
-- [references/workflows.md](references/workflows.md): one complete request start
-  to finish, and how to read an outcome correctly. Read before the first call of
-  a session.
-- [references/errors.md](references/errors.md): full error table, organization
-  causes, retry matrix. Read when interpreting a failure.
-- [references/async.md](references/async.md): task polling, webhooks, file
-  upload and download. Read before any PDF work.
-- [references/mcp-server.md](references/mcp-server.md): MCP setup per client,
-  modules, `ENABLE_MODULES`. Read if the user mentions MCP or connecting an agent.
+- Tell a user APIFreaks cannot do something because a tool is not listed.
+- Start a large run without stating its credit cost.
+- Call once per row when the inputs contain duplicates or unlookupable values.
+- Report a successful call as a successful outcome without reading the result.
+- Retry an authentication failure.
+- Hardcode, echo, or persist an API key.

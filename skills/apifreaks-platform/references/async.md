@@ -1,122 +1,58 @@
-# Asynchronous jobs
+# Long-running jobs
 
-Some PDF operations do not return a result. They return a `taskId` and run in the
-background. Treating that response as the result, or polling it wrongly, is the
-most common way to waste time on this platform.
+Some operations, currently PDF processing, do not return a result when called.
+They accept the job, return a task identifier, and do the work in the
+background. The MCP tools cover submitting a job, checking its status, and
+retrieving the output; this file covers how to use them without getting stuck or
+reporting the wrong outcome.
 
-If any other endpoint returns a `taskId` rather than data, the same rules apply.
-The endpoint's `reference.md` says which responses it returns.
+If any other operation returns a task identifier instead of data, the same rules
+apply.
 
-## Table of contents
+## Accepted is not finished
 
-- [The task lifecycle](#the-task-lifecycle)
-- [Polling](#polling)
-- [Retrieving output](#retrieving-output)
-- [Failed tasks](#failed-tasks)
-- [Expiry](#expiry)
-- [Webhooks](#webhooks)
+The first response confirms the job was accepted and names its inputs. It
+contains no output. Do not tell the user the work is done at this point; it can
+still fail.
 
-## The task lifecycle
+## Poll with a ceiling
 
-```
-POST /pdf/<operation>      → { taskId, inputIds }
-        ↓
-GET  /pdf/task-status?task_id=<id>   → { status: ... }
-        ↓ completed
-     outputUrls / outputIds
-        ↓
-GET  /pdf/resource/download?resource_id=<id>
-```
+Check the task's status with a delay between attempts, increasing the delay as
+you go, and stop at a sensible total wait. A tight loop does not make the job
+finish sooner, and an unbounded one hangs the task if something upstream is
+stuck.
 
-The first response contains no output. It confirms the job was accepted and names
-the inputs it will work on. Do not report success to the user at this point; the
-job can still fail.
+If the ceiling is reached, tell the user the job is still running and give them
+the task identifier so they can check later.
 
-## Polling
+## A failed job looks like a successful call
 
-```bash
-curl -s "https://api.apifreaks.com/v1.0/pdf/task-status?task_id=$TASK" \
-  -H "X-apiKey: $APIFREAKS_API_KEY"
-```
+This is the most important thing in this file. When a job fails, checking its
+status still succeeds: the failure is reported inside the result as a `status`
+of `failed`, with an `error` and a `message` explaining why.
 
-`task_id` is required. A completed task returns:
+So always read the `status` field. An agent that checks only whether the call
+succeeded will report success and hand the user nothing.
 
-```json
-{
-  "taskId": "74004a68-...",
-  "status": "completed",
-  "createdAt": "2026-07-27 10:48:51",
-  "outputUrls": ["https://api.apifreaks.com/v1.0/pdf/resource/download?resource_id=..."],
-  "outputIds": ["21e3bb30-..."],
-  "inputIds": ["0deab2f6-...", "5b6a4836-..."]
-}
-```
+Pass the `message` to the user as written. It usually names a problem they can
+fix and retry, such as a page range beyond the end of the document.
 
-Poll with a delay and a ceiling. Start at a few seconds, back off, and cap the
-total wait. Tight polling loops burn time without making the job finish sooner,
-and an unbounded loop hangs the task when something upstream is stuck.
+## Retrieve before anything else
 
-If the wait exceeds a reasonable ceiling, tell the user the task is still running
-and give them the `taskId` so they can check later. Do not silently keep polling.
+Once a job completes, download the output first. Tasks and their outputs carry
+an `expiresAt`; after it, the output is gone and the job has to run again, which
+costs credits again.
 
-Separately, `GET /pdf/file-status?file_id=<id>` reports on an individual file
-rather than a task. Use task status for the job and file status for a specific
-input or output.
+If you hand a task identifier back to the user for later, tell them when it
+expires.
 
-## Retrieving output
-
-`outputUrls` are ready to fetch and already carry the resource id. `outputIds`
-name the same resources if you prefer to build the download call yourself:
-
-```
-GET /pdf/resource/download?resource_id=<id>
-```
-
-Download before doing anything else with the result, because resources expire
-(see below). Save to disk rather than holding the content in memory, since PDFs
-are binary and often large.
-
-Related endpoints: `/pdf/resource/upload` and `/pdf/resource/upload-binary` to
-put a file in, `/pdf/files` to list what is stored, and `/pdf/file` with DELETE to
-remove one. That DELETE is the platform's one non-GET, non-POST method.
-
-## Failed tasks
-
-A failed task returns a 200 with `status: failed` and the reason in the body:
-
-```json
-{
-  "taskId": "9d8d803b-...",
-  "status": "failed",
-  "error": "Invalid Page Range",
-  "message": "One or more specified page numbers exceed the total number of pages in the PDF document.",
-  "expiresAt": "2026-08-03 10:52:12"
-}
-```
-
-This matters: **the HTTP status is 200 even though the job failed.** An agent
-checking only status codes reports success and hands the user nothing. Always
-read the `status` field.
-
-Report the `message` as written. It usually names the exact problem, such as a
-page range exceeding the document length, which the user can fix and retry.
-
-## Expiry
-
-Tasks and their resources carry an `expiresAt`, typically about a week out. After
-that the output is gone and the job must be rerun, which costs credits again.
-
-Download outputs as soon as a task completes. If you are handing a `taskId` back
-to a user for later, tell them the expiry date rather than leaving them to
-discover it.
+Save binary output to a file rather than holding it in memory.
 
 ## Webhooks
 
-Where an endpoint accepts a webhook URL, the platform calls back on completion
-instead of being polled. Check the `reference.md` for whether the endpoint supports
-one and for the parameter name, since it is not offered everywhere.
+Where an operation accepts a webhook, the platform calls back on completion
+instead of being polled. The tool's description says whether it does.
 
-Use a webhook when the caller is a service that can receive one. In an
-interactive agent session there is usually nowhere for the callback to land, so
-polling with a ceiling is the right choice, and offering a webhook to a user who
-has no endpoint to receive it only confuses the task.
+In an interactive session there is usually nowhere for a callback to land, so
+polling with a ceiling is the better choice. Only suggest a webhook to a user who
+has a service that can receive one.
