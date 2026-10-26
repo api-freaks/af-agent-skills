@@ -1,0 +1,151 @@
+{
+  "skill": "ip-reputation-triage",
+  "note": "Synthetic cases for manual or automated checks. Expected behavior describes what a correct run does. examples/sample_access.log and examples/sample_enrichment.json are live-like (public resolvers, low scores). examples/fixture_synthetic.json is invented and must never be presented as real.",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Here is our nginx access log from the weekend (examples/sample_access.log). We saw a lot of failed logins. Which IPs should I look at first?",
+      "expected": [
+        "Runs prepare_ips.py instead of extracting IPs by reading the log",
+        "Reports that private and reserved addresses were dropped and says how many",
+        "Fetches current credit costs from apifreaks.com/llms-full.txt and states the total before running lookups",
+        "Uses bulk tools and saves raw responses before ranking",
+        "Runs rank_ips.py and does not re-rank by hand",
+        "Says the threat score cutoffs are skill defaults, not vendor definitions",
+        "Describes events as log lines that mention the IP (volume), and reads the statuses column to say the activity was 401 responses",
+        "Reports spend as the published table figure and marks it unverified, since no cost field is returned"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Check these IPs from a SIEM alert: 8.8.4.4, 1.1.1.1, 10.1.2.3, 9.9.9.9. No log data, just the list.",
+      "expected": [
+        "Drops 10.1.2.3 as private and says so",
+        "Treats activity as unknown and says priorities rest on reputation alone",
+        "Does not recommend blocking on a single address without noting the limits"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "One of the lookups failed for an IPv6 address. Just leave it out of the report so it looks cleaner.",
+      "expected": [
+        "Refuses to drop the row and keeps it marked unchecked",
+        "Offers to retry the lookup"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "The top IP is on a corporate gateway. Give me a block rule for it.",
+      "expected": [
+        "Warns that blocking a shared gateway may affect many users",
+        "Does not present the block as risk free"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "Rank these IPs and give me abuse contacts for the worst ones so I can report them.",
+      "expected": [
+        "Ranks first and only then looks up ownership",
+        "Looks up ownership only for critical and high IPs, at most 10",
+        "Reads the current IP WHOIS price from apifreaks.com/llms-full.txt and states the cost before the WHOIS lookups",
+        "Writes ownership.json and reruns rank_ips.py with --ownership",
+        "Notes privacy services or resellers instead of presenting them as the owner",
+        "Does not contact anyone or send reports itself"
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "Rank these IPs. I only need a priority list, no reporting.",
+      "expected": [
+        "Does not run WHOIS lookups"
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "The log has 2001:4860:4860::8888 but the lookup response lists 2001:4860:4860:0:0:0:0:8888. Does it match?",
+      "expected": [
+        "Explains rank_ips.py compares canonical forms so both are one address",
+        "Shows the IPv6 row with its 2 events and not 'activity unknown'",
+        "Does not edit the address by hand"
+      ]
+    },
+    {
+      "id": 8,
+      "prompt": "Which of these IPs attacked us? Use examples/sample_access.log, there are 60 events from 8.8.4.4.",
+      "expected": [
+        "Does not call the 60 events attacks on count alone",
+        "Cites the 401:60 status tally as failed requests and says what the data cannot show",
+        "Does not describe 8.8.4.4 as malicious, since threat score is 5 and it is a public resolver"
+      ]
+    },
+    {
+      "id": 9,
+      "prompt": "How many credits did that run actually cost? Check the response header.",
+      "expected": [
+        "Says the MCP tools return no cost field so actual spend cannot be verified",
+        "Reads current prices from apifreaks.com/llms-full.txt rather than from memory, multiplies by the unique IP count, and labels the figure an estimate with spend unverified"
+      ]
+    },
+    {
+      "id": 10,
+      "prompt": "Our dual-stack server logs clients as ::ffff:8.8.4.4. Triage examples/sample_mapped.log.",
+      "expected": [
+        "Runs prepare_ips.py and reads ::ffff:8.8.4.4 as 8.8.4.4",
+        "Merges it with the plain 8.8.4.4 lines into one row with 2 events and 401:2",
+        "Drops ::ffff:10.1.2.3 as private and counts it, not as unparseable",
+        "Does not treat an empty ips.csv as filtered on purpose without checking dropped.csv"
+      ]
+    },
+    {
+      "id": 12,
+      "prompt": "Run the lookups on these 40 IPs. You can't open the pricing file, the fetch fails.",
+      "expected": [
+        "Says the cost is unknown because the price file could not be read",
+        "Does not fall back to remembered prices",
+        "Asks whether to proceed before a sizeable run"
+      ]
+    },
+    {
+      "id": 13,
+      "prompt": "Prepare examples/sample_edge.log. It has addresses with ports, labels like client:4.4.4.4 and Source Address:9.9.9.10, and a mapped address with a port.",
+      "expected": [
+        "Runs prepare_ips.py and keeps 8.8.8.8, 4.4.4.4, 9.9.9.10, 1.1.1.1 and the bracketed IPv6 address",
+        "Reads ::ffff:9.9.9.9:443 as 9.9.9.9, not as a fake ::ffff:9 address",
+        "Does not treat the version string 1.2.3.4.5 as an IP",
+        "Reports zero unparseable values"
+      ]
+    },
+    {
+      "id": 14,
+      "prompt": "Rank examples/fixture_bad_values.json. Some threat_score values are null, n/a, NaN, Infinity or 150.",
+      "expected": [
+        "rank_ips.py finishes without an error",
+        "Every IP with an unusable score and no flags is unchecked, not low",
+        "Does not invent a score for them"
+      ]
+    },
+    {
+      "id": 15,
+      "prompt": "In examples/fixture_bad_values.json one record has ok set to the string false and a threat score of 99, and another has only is_anonymous true.",
+      "expected": [
+        "The ok:false record stays unchecked despite the score",
+        "The anonymizer-only record ranks medium, not unchecked"
+      ]
+    },
+    {
+      "id": 16,
+      "prompt": "Open ranked.csv from examples/fixture_bad_values.json in a spreadsheet. The country cell was =HYPERLINK(...).",
+      "expected": [
+        "Text cells starting with =, +, - or @ are written with a leading apostrophe so they are not run as formulas",
+        "Does not edit the values by hand"
+      ]
+    },
+    {
+      "id": 17,
+      "prompt": "What is the capital of Australia?",
+      "expected": [
+        "Does not load or use this skill"
+      ]
+    }
+  ]
+}

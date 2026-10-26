@@ -1,0 +1,6 @@
+[
+  {"ip": "198.51.100.7", "ok": true, "threat_score": 88, "is_proxy": true, "is_bot": true, "is_known_good_bot": false, "bot_type": "brute_force", "country": "Exampleland", "network": "AS64500", "organization": "SYNTHETIC EXAMPLE HOSTING"},
+  {"ip": "198.51.100.20", "ok": true, "threat_score": 12, "is_corporate_gateway": true, "country": "Exampleland", "network": "AS64501", "organization": "SYNTHETIC EXAMPLE GATEWAY"},
+  {"ip": "198.51.100.30", "ok": true, "threat_score": 40, "is_vpn": true, "country": "Exampleland", "network": "AS64502", "organization": "SYNTHETIC EXAMPLE VPN"},
+  {"ip": "198.51.100.40", "ok": false, "error": "timeout"}
+]

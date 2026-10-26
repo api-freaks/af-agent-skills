@@ -1,0 +1,9 @@
+[{"ip":"8.8.8.8","threat_score":null},
+ {"ip":"8.8.4.4","threat_score":"n/a"},
+ {"ip":"1.1.1.1","threat_score":"NaN"},
+ {"ip":"1.0.0.1","threat_score":"Infinity"},
+ {"ip":"9.9.9.9","threat_score":150},
+ {"ip":"9.9.9.10","ok":"false","threat_score":99},
+ {"ip":"4.4.4.4","is_anonymous":true},
+ {"ip":"5.5.5.5","threat_score":50,"country":"=HYPERLINK(\"http://x\")","organization":"@evil","error":"x"},
+ {"ip":"6.6.6.6","threat_score":70}]

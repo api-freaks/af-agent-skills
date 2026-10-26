@@ -1,0 +1,50 @@
+[
+  {
+    "ip": "8.8.4.4",
+    "ok": true,
+    "threat_score": 5,
+    "is_cloud_provider": true,
+    "cloud_provider_name": "Google LLC",
+    "country": "United States",
+    "network": "AS15169",
+    "organization": "Google LLC"
+  },
+  {
+    "ip": "1.1.1.1",
+    "ok": true,
+    "threat_score": 5,
+    "is_cloud_provider": true,
+    "cloud_provider_name": "Cloudflare, Inc.",
+    "country": "Australia",
+    "network": "AS13335",
+    "organization": "Cloudflare, Inc."
+  },
+  {
+    "ip": "9.9.9.9",
+    "ok": true,
+    "threat_score": 5,
+    "country": "United States",
+    "network": "AS19281",
+    "organization": "Quad9"
+  },
+  {
+    "ip": "1.0.0.1",
+    "ok": true,
+    "threat_score": 5,
+    "is_cloud_provider": true,
+    "cloud_provider_name": "Cloudflare, Inc.",
+    "country": "Australia",
+    "network": "AS13335",
+    "organization": "Cloudflare, Inc."
+  },
+  {
+    "ip": "2001:4860:4860:0:0:0:0:8888",
+    "ok": true,
+    "threat_score": 5,
+    "is_cloud_provider": true,
+    "cloud_provider_name": "Google LLC",
+    "country": "United States",
+    "network": "AS15169",
+    "organization": "Google LLC"
+  }
+]

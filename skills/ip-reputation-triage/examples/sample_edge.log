@@ -1,0 +1,7 @@
+8.8.8.8:443 - - [20/Oct/2026:02:00:10 +0000] "GET / HTTP/1.1" 200 1
+client:4.4.4.4 hit
+Source Address:9.9.9.10 hit
+::ffff:9.9.9.9:443 hit
+[2001:4860:4860::8888]:443 hit
+version 1.2.3.4.5 build
+trailing 1.1.1.1.
