@@ -28,3 +28,11 @@ venv/
 *.log
 tmp/
 temp/
+
+.cursor*
+
+sample data/
+
+# Keep test fixtures and examples that are logs
+!skills/*/evals/files/*.log
+!skills/*/examples/*.log
