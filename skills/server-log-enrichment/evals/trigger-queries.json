@@ -1,0 +1,102 @@
+[
+  {
+    "query": "can you take a look at ~/logs/access.log.1 and tell me who's been hitting us the most this week",
+    "should_trigger": true
+  },
+  {
+    "query": "something weird in our nginx logs, loads of 401s on /api/login from what looks like the same place. worth digging into?",
+    "should_trigger": true
+  },
+  {
+    "query": "I need to know which countries our traffic is actually coming from, I've got a month of apache logs",
+    "should_trigger": true
+  },
+  {
+    "query": "my boss wants a summary of bot vs real traffic for the quarterly, logs are in /var/log/nginx/",
+    "should_trigger": true
+  },
+  {
+    "query": "Enrich the IP addresses in the attached access log with geolocation and threat data and produce a CSV.",
+    "should_trigger": true
+  },
+  {
+    "query": "we got flagged for scraping by a partner, can you check our cloudfront logs and see whether the requests they're complaining about actually came from us",
+    "should_trigger": true
+  },
+  {
+    "query": "pulled the ALB logs for the incident window, need to work out whether the spike was one source or distributed",
+    "should_trigger": true
+  },
+  {
+    "query": "here's last night's HAProxy log, what is this Go-http-client thing making a thousand requests an hour",
+    "should_trigger": true
+  },
+  {
+    "query": "are the Googlebot hits in this IIS log real or fake? I have the log file here",
+    "should_trigger": true
+  },
+  {
+    "query": "which hosting providers are sending us the most traffic according to this caddy json log",
+    "should_trigger": true
+  },
+  {
+    "query": "is 45.146.164.110 a vpn? it's all over my server logs",
+    "should_trigger": false
+  },
+  {
+    "query": "can you check the reputation of apifreaks.com",
+    "should_trigger": false
+  },
+  {
+    "query": "write me a logrotate config that keeps 14 days of nginx logs compressed",
+    "should_trigger": false
+  },
+  {
+    "query": "grep the 500s out of this access log and tell me which endpoint is failing most",
+    "should_trigger": false
+  },
+  {
+    "query": "our p95 latency jumped on tuesday, can you correlate that against the request log and find the slow routes",
+    "should_trigger": false
+  },
+  {
+    "query": "what's the right nginx log_format string to include the request time and upstream response time",
+    "should_trigger": false
+  },
+  {
+    "query": "parse this application log and find the stack trace that's repeating",
+    "should_trigger": false
+  },
+  {
+    "query": "set up an alert that pings me whenever someone hits /admin from outside the office IP",
+    "should_trigger": false
+  },
+  {
+    "query": "I have a CSV of 400 domains from a marketing list, can you check which ones are still registered",
+    "should_trigger": false
+  },
+  {
+    "query": "explain what X-Forwarded-For is and why it can't be trusted",
+    "should_trigger": false
+  },
+  {
+    "query": "write a python script that ships our logs to s3 nightly",
+    "should_trigger": false
+  },
+  {
+    "query": "how many unique visitors did we get in august, the analytics is broken but I have the raw logs",
+    "should_trigger": false
+  },
+  {
+    "query": "Partner says our crawler is scraping them. Check these CloudFront logs and tell me whether the Googlebot hits are real.",
+    "should_trigger": true
+  },
+  {
+    "query": "Is 8.8.8.8 a VPN?",
+    "should_trigger": false
+  },
+  {
+    "query": "write an nginx log_format that records upstream response time",
+    "should_trigger": false
+  }
+]

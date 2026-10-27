@@ -1,0 +1,6 @@
+198.51.100.24 - - [12/Sep/2026:09:01:12 +0000] "GET /index.html HTTP/1.1" 200 5120 "https://duckduckgo.com/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
+198.51.100.24 - - [12/Sep/2026:09:01:30 +0000] "GET /contact HTTP/1.1" 200 3300 "https://example-partner.net/resources" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
+192.0.2.77 - - [12/Sep/2026:09:14:03 +0000] "GET /feed.xml HTTP/1.1" 200 8800 "-" "Feedfetcher-Google; (+http://www.google.com/feedfetcher.html)"
+203.0.113.9 - - [12/Sep/2026:09:22:41 +0000] "GET /wp-admin/ HTTP/1.1" 404 512 "-" "Mozilla/5.0 (compatible; Nmap Scripting Engine; https://nmap.org/book/nse.html)"
+203.0.113.9 - - [12/Sep/2026:09:22:42 +0000] "GET /phpmyadmin/ HTTP/1.1" 404 512 "-" "Mozilla/5.0 (compatible; Nmap Scripting Engine; https://nmap.org/book/nse.html)"
+198.51.100.101 - - [12/Sep/2026:10:05:18 +0000] "GET /downloads/report.pdf HTTP/1.1" 200 1048576 "https://news.example.co.uk/article/4412" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
